@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Classe } from '../domain/tipos';
 import { GameRepository } from './game.repository';
 import { GameService } from './game.service';
@@ -49,7 +49,7 @@ integration('Postgres entre instâncias independentes', () => {
       state.recursos.ouro = 999;
       await first.save(state);
       throw new Error('rollback');
-    })).rejects.toThrow('rollback');
+    })).rejects.toThrow(ServiceUnavailableException);
     expect((await b.obter(game.id)).recursos.ouro).toBe(45);
     await a.remover(game.id);
     await expect(b.obter(game.id)).rejects.toThrow(NotFoundException);
