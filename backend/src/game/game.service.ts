@@ -32,20 +32,22 @@ export class GameService {
     private readonly random: RandomService,
   ) {}
 
-  criar(dto: CriarJogoDto): EstadoJogo {
+  async criar(dto: CriarJogoDto): Promise<EstadoJogo> {
     const nome = dto.nome?.trim() || 'Herói';
     const estado = criarEstadoInicial(randomUUID(), dto.classe, nome, this.clock.now());
-    this.repo.save(estado);
+    await this.repo.save(estado);
     return estado;
   }
 
-  obter(id: string): EstadoJogo {
-    return this.buscar(id);
+  async obter(id: string): Promise<EstadoJogo> {
+    return await this.buscar(id);
   }
 
-  remover(id: string): void {
-    this.buscar(id);
-    this.repo.delete(id);
+  async remover(id: string): Promise<void> {
+    return this.repo.transaction(id, async () => {
+      await this.buscar(id);
+      await this.repo.delete(id);
+    });
   }
 
   /**
@@ -53,77 +55,85 @@ export class GameService {
    * O front pode chamar a cada 1s; chamadas duplicadas/simultâneas NÃO geram
    * produção extra, porque o tempo processado é controlado pelo servidor.
    */
-  tick(id: string): RespostaTick {
-    const { estado, novosEventos, segundos } = this.liquidar(this.buscar(id));
-    this.repo.save(estado);
-    return { estado, segundosProcessados: segundos, novosEventos };
+  async tick(id: string): Promise<RespostaTick> {
+    return this.repo.transaction(id, async () => {
+      const { estado, novosEventos, segundos } = this.liquidar(await this.buscar(id));
+      await this.repo.save(estado);
+      return { estado, segundosProcessados: segundos, novosEventos };
+    });
   }
 
-  iniciarAtividade(id: string, atividadeId: string): EstadoJogo {
-    const { estado } = this.liquidar(this.buscar(id));
-    const atividade = estado.atividades.find((a) => a.id === atividadeId);
-    if (!atividade) throw new NotFoundException(`Atividade "${atividadeId}" não existe`);
-    if (!atividade.desbloqueada) {
-      throw new ConflictException(
-        `Atividade "${atividade.nome}" bloqueada: requer nível ${atividade.nivelDesbloqueio}`,
-      );
-    }
+  async iniciarAtividade(id: string, atividadeId: string): Promise<EstadoJogo> {
+    return this.repo.transaction(id, async () => {
+      const { estado } = this.liquidar(await this.buscar(id));
+      const atividade = estado.atividades.find((a) => a.id === atividadeId);
+      if (!atividade) throw new NotFoundException(`Atividade "${atividadeId}" não existe`);
+      if (!atividade.desbloqueada) {
+        throw new ConflictException(
+          `Atividade "${atividade.nome}" bloqueada: requer nível ${atividade.nivelDesbloqueio}`,
+        );
+      }
 
-    estado.atividades.forEach((a) => (a.ativa = a.id === atividadeId));
-    estado.personagem.atividadeAtualId = atividadeId;
-    registrarEvento(estado, `Iniciou a atividade "${atividade.nome}"`, TipoEvento.INFORMATIVO, this.clock.now());
+      estado.atividades.forEach((a) => (a.ativa = a.id === atividadeId));
+      estado.personagem.atividadeAtualId = atividadeId;
+      registrarEvento(estado, `Iniciou a atividade "${atividade.nome}"`, TipoEvento.INFORMATIVO, this.clock.now());
 
-    this.repo.save(estado);
-    return estado;
+      await this.repo.save(estado);
+      return estado;
+    });
   }
 
-  pararAtividade(id: string): EstadoJogo {
-    const { estado } = this.liquidar(this.buscar(id));
-    const atual = estado.atividades.find((a) => a.ativa);
-    if (!atual) throw new ConflictException('Nenhuma atividade em andamento');
+  async pararAtividade(id: string): Promise<EstadoJogo> {
+    return this.repo.transaction(id, async () => {
+      const { estado } = this.liquidar(await this.buscar(id));
+      const atual = estado.atividades.find((a) => a.ativa);
+      if (!atual) throw new ConflictException('Nenhuma atividade em andamento');
 
-    atual.ativa = false;
-    estado.personagem.atividadeAtualId = null;
-    registrarEvento(estado, `Parou a atividade "${atual.nome}"`, TipoEvento.INFORMATIVO, this.clock.now());
+      atual.ativa = false;
+      estado.personagem.atividadeAtualId = null;
+      registrarEvento(estado, `Parou a atividade "${atual.nome}"`, TipoEvento.INFORMATIVO, this.clock.now());
 
-    this.repo.save(estado);
-    return estado;
+      await this.repo.save(estado);
+      return estado;
+    });
   }
 
-  equipar(id: string, equipamentoId: string): EstadoJogo {
-    const estado = this.buscar(id);
-    const equipamento = EQUIPAMENTOS.find((e) => e.id === equipamentoId);
-    if (!equipamento) throw new NotFoundException(`Equipamento "${equipamentoId}" não existe`);
-    if (!ehCompativel(estado.personagem.classe, equipamentoId)) {
-      throw new BadRequestException(
-        `${equipamento.nome} não é compatível com a classe ${estado.personagem.classe}`,
-      );
-    }
+  async equipar(id: string, equipamentoId: string): Promise<EstadoJogo> {
+    return this.repo.transaction(id, async () => {
+      const estado = await this.buscar(id);
+      const equipamento = EQUIPAMENTOS.find((e) => e.id === equipamentoId);
+      if (!equipamento) throw new NotFoundException(`Equipamento "${equipamentoId}" não existe`);
+      if (!ehCompativel(estado.personagem.classe, equipamentoId)) {
+        throw new BadRequestException(
+          `${equipamento.nome} não é compatível com a classe ${estado.personagem.classe}`,
+        );
+      }
 
-    // Um equipamento por tipo (arma / armadura): substitui o anterior do mesmo tipo
-    estado.personagem.equipamentos = [
-      ...estado.personagem.equipamentos.filter((e) => e.tipo !== equipamento.tipo),
-      { ...equipamento },
-    ];
-    recalcularAtributos(estado);
-    registrarEvento(estado, `Equipou ${equipamento.nome}`, TipoEvento.INFORMATIVO, this.clock.now());
+      // Um equipamento por tipo (arma / armadura): substitui o anterior do mesmo tipo
+      estado.personagem.equipamentos = [
+        ...estado.personagem.equipamentos.filter((e) => e.tipo !== equipamento.tipo),
+        { ...equipamento },
+      ];
+      recalcularAtributos(estado);
+      registrarEvento(estado, `Equipou ${equipamento.nome}`, TipoEvento.INFORMATIVO, this.clock.now());
 
-    this.repo.save(estado);
-    return estado;
+      await this.repo.save(estado);
+      return estado;
+    });
   }
 
-  eventos(id: string): Evento[] {
-    return this.buscar(id).eventos;
+  async eventos(id: string): Promise<Evento[]> {
+    return (await this.buscar(id)).eventos;
   }
 
-  centralMatematica(id: string): SecaoCentralMatematica[] {
-    return montarCentralMatematica(this.buscar(id));
+  async centralMatematica(id: string): Promise<SecaoCentralMatematica[]> {
+    return montarCentralMatematica(await this.buscar(id));
   }
 
   // ---------------------------------------------------------------------------
 
-  private buscar(id: string): EstadoJogo {
-    const estado = this.repo.find(id);
+  private async buscar(id: string): Promise<EstadoJogo> {
+    const estado = await this.repo.find(id);
     if (!estado) throw new NotFoundException(`Jogo "${id}" não encontrado`);
     return estado;
   }
