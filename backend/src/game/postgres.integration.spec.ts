@@ -8,6 +8,7 @@ import { Clock, RandomService } from './runtime';
 const connectionString = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 const integration = process.env.RUN_DATABASE_TESTS === '1' && connectionString ? describe : describe.skip;
 integration('Postgres entre instâncias independentes', () => {
+  jest.setTimeout(45000);
   let first: GameRepository;
   let second: GameRepository;
   let a: GameService;
