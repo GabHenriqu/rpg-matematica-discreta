@@ -1,0 +1,82 @@
+@import "tailwindcss";
+
+/*
+  Sistema de design do RPG Idle — ficha de personagem/manuscrito, não o
+  "SaaS card kit" genérico. Paleta escura tipo tinta, um acento dourado
+  para nível/ouro e uma cor por tipo de recurso.
+*/
+@theme {
+  --color-ink: #14131f;
+  --color-ink-deep: #0d0c15;
+  --color-panel: #1c1b2a;
+  --color-panel-raised: #242335;
+  --color-border: #38364f;
+  --color-text: #ede9f5;
+  --color-muted: #9793ae;
+  --color-gold: #d9a94d;
+  --color-gold-soft: #f0d189;
+  --color-violet: #9184dd;
+  --color-teal: #4fb8aa;
+  --color-crimson: #d6614f;
+
+  --font-display: "Fraunces", "Iowan Old Style", serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background-color: var(--color-gold);
+  color: var(--color-ink-deep);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold-soft);
+  outline-offset: 2px;
+}
+
+/* Diário de eventos: barra de rolagem fina, discreta */
+.cronica::-webkit-scrollbar {
+  width: 6px;
+}
+.cronica::-webkit-scrollbar-thumb {
+  background-color: var(--color-border);
+  border-radius: 999px;
+}
+.cronica::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Seções da Central Matemática (accordion nativo em <details>) */
+details.formula > summary {
+  list-style: none;
+  cursor: pointer;
+}
+details.formula > summary::-webkit-details-marker {
+  display: none;
+}
+details.formula > summary .chevron {
+  transition: transform 200ms ease;
+}
+details.formula[open] > summary .chevron {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

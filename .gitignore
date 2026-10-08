@@ -1,0 +1,19 @@
+# Dependencies and generated output
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+
+# Local configuration and game saves
+.env
+.env.*
+!.env.example
+data/
+
+# Hosting/editor machine state
+.vercel/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
