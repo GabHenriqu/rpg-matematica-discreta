@@ -20,6 +20,7 @@ import {
   criarEstadoInicial,
   recalcularAtributos,
   registrarEvento,
+  normalizarEstadoDrops,
 } from './game.engine';
 import { GameRepository } from './game.repository';
 import { Clock, RandomService } from './runtime';
@@ -135,6 +136,8 @@ export class GameService {
   private async buscar(id: string): Promise<EstadoJogo> {
     const estado = await this.repo.find(id);
     if (!estado) throw new NotFoundException(`Jogo "${id}" não encontrado`);
+    // Estados JSONB e arquivos anteriores não possuem os campos de drops.
+    normalizarEstadoDrops(estado);
     return estado;
   }
 

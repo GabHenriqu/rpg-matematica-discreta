@@ -29,6 +29,15 @@ async function criar() {
   return { relogio, aleatorio, service, id: jogo.id };
 }
 
+async function prepararExplorar() {
+  const contexto = await criar();
+  await contexto.service.iniciarAtividade(contexto.id, 'treinar');
+  contexto.relogio.avancar(20);
+  await contexto.service.tick(contexto.id);
+  await contexto.service.iniciarAtividade(contexto.id, 'explorar');
+  return contexto;
+}
+
 describe('GameService', () => {
   const databaseUrl = process.env.DATABASE_URL;
   beforeAll(() => { delete process.env.DATABASE_URL; });
@@ -97,28 +106,89 @@ describe('GameService', () => {
     await expect(service.iniciarAtividade(id, 'explorar')).rejects.toThrow(ConflictException);
   });
 
-  it('Explorar: sorteio raro/lendário gera evento e bônus de itens; comum não gera evento', async () => {
+  it('Explorar: concede e registra um item por evento a cada cinco segundos', async () => {
     const { service, relogio, aleatorio, id } = await criar();
     await service.iniciarAtividade(id, 'treinar');
     relogio.avancar(20);
-    await service.tick(id); // nível 2
+    await service.tick(id);
     await service.iniciarAtividade(id, 'explorar');
-    aleatorio.valores = [0.1, 0.8, 0.99]; // comum, raro, lendário
-    relogio.avancar(3);
-    const r = await service.tick(id);
-    // 3 itens produzidos + 1 (raro) + 3 (lendário)
-    expect(r.estado.recursos.itens).toBe(7);
-    expect(r.novosEventos.map((e) => e.tipo)).toEqual([TipoEvento.RARO, TipoEvento.LENDARIO]);
+    aleatorio.valores = [0.1, 0.8, 0.99, 0.1, 0.1];
+    relogio.avancar(24);
+    const parcial = await service.tick(id);
+    expect(parcial.estado.recursos.itens).toBe(4); expect(parcial.estado.segundosParaProximoDrop).toBe(4);
+    const drops = parcial.novosEventos.filter((event) => event.tipo === TipoEvento.DROP);
+    expect(drops).toHaveLength(4);
+    expect(drops.map((event) => event.mensagem)).toEqual([
+      'Você dropou um item comum', 'Você dropou um item raro',
+      'Você dropou um item lend\u00e1rio', 'Você dropou um item comum',
+    ]);
+    relogio.avancar(1);
+    const result = await service.tick(id);
+    expect(result.estado.recursos.itens).toBe(5);
+    expect(result.estado.contadoresDrops).toEqual({ comum: 3, raro: 1, lendario: 1 });
+    expect(result.novosEventos.filter((event) => event.tipo === TipoEvento.DROP).map((event) => event.mensagem))
+      .toEqual(['Você dropou um item comum']);
   });
 
-  it('limite de itens é respeitado', async () => {
+  it('preserva o restante da cadência ao alternar atividade e retomar Explorar', async () => {
     const { service, relogio, id } = await criar();
     await service.iniciarAtividade(id, 'treinar');
     relogio.avancar(20);
     await service.tick(id);
     await service.iniciarAtividade(id, 'explorar');
-    relogio.avancar(100);
-    expect((await service.tick(id)).estado.recursos.itens).toBe(20);
+    relogio.avancar(3);
+    await service.tick(id);
+    await service.pararAtividade(id);
+    relogio.avancar(30); // tempo parado não conta
+    await service.iniciarAtividade(id, 'explorar');
+    relogio.avancar(2);
+    const result = await service.tick(id);
+    expect(result.estado.recursos.itens).toBe(1);
+    expect(result.estado.contadoresDrops.comum).toBe(1);
+  });
+
+  it('registra cada drop em settlement offline e respeita o teto de 8 horas', async () => {
+    const { service, relogio, aleatorio, id } = await criar();
+    await service.iniciarAtividade(id, 'treinar'); relogio.avancar(20); await service.tick(id);
+    await service.iniciarAtividade(id, 'explorar');
+    const dropCount = 8 * 60 * 60 / 5;
+    aleatorio.valores = Array.from({ length: dropCount }, (_, index) => index === 0 ? 0.8 : index === 1 ? 0.99 : 0);
+    relogio.avancar(9 * 60 * 60);
+    const result = await service.tick(id);
+    expect(result.segundosProcessados).toBe(8 * 60 * 60);
+    expect(result.estado.contadoresDrops).toEqual({ comum: dropCount - 2, raro: 1, lendario: 1 });
+    expect(result.estado.recursos.itens).toBe(dropCount);
+    const drops = result.novosEventos.filter((event) => event.tipo === TipoEvento.DROP);
+    expect(drops).toHaveLength(dropCount);
+    expect(drops[0].mensagem).toBe('Você dropou um item raro');
+    expect(drops[1].mensagem).toBe('Você dropou um item lend\u00e1rio');
+    expect(drops[2].mensagem).toBe('Você dropou um item comum');
+    expect(result.estado.eventos.filter((event) => event.tipo === TipoEvento.DROP)).toHaveLength(5);
+  });
+
+  it.each([
+    { nome: 'comum', roll: 0, categoria: 'comum', mensagem: 'Você dropou um item comum' },
+    { nome: 'raro', roll: 0.8, categoria: 'raro', mensagem: 'Você dropou um item raro' },
+    { nome: 'lendario', roll: 0.99, categoria: 'lendario', mensagem: 'Você dropou um item lend\u00e1rio' },
+  ])('incrementa contador e registra imediatamente drop $nome', async ({ roll, categoria, mensagem }) => {
+    const { service, relogio, aleatorio, id } = await prepararExplorar();
+    aleatorio.valores = [roll];
+    relogio.avancar(5);
+    const result = await service.tick(id);
+    expect(result.estado.recursos.itens).toBe(1);
+    expect(result.estado.contadoresDrops[categoria as keyof typeof result.estado.contadoresDrops]).toBe(1);
+    expect(result.novosEventos.filter((event) => event.tipo === TipoEvento.DROP)).toHaveLength(1);
+    expect(result.novosEventos[0].mensagem).toBe(mensagem);
+  });
+
+  it('inventário não limita a quantidade de itens', async () => {
+    const { service, relogio, id } = await criar();
+    await service.iniciarAtividade(id, 'treinar');
+    relogio.avancar(20);
+    await service.tick(id);
+    await service.iniciarAtividade(id, 'explorar');
+    relogio.avancar(500);
+    expect((await service.tick(id)).estado.recursos.itens).toBe(100);
   });
 
   it('event log guarda só os 5 mais recentes', async () => {

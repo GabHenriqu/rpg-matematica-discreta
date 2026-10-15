@@ -1,10 +1,9 @@
 import { randomUUID } from 'crypto';
 import { criarAtividadesIniciais } from '../domain/catalogo';
 import {
-  BONUS_ITENS,
   ID_ATIVIDADE_EXPLORAR,
-  LIMITE_ITENS,
   MAX_EVENTOS,
+  SEGUNDOS_POR_DROP,
 } from '../domain/constantes';
 import {
   Classe,
@@ -14,6 +13,7 @@ import {
   ResultadoTick,
   TipoEvento,
   TipoRecurso,
+  ContadoresDrops,
 } from '../domain/tipos';
 import { calcularAtributos, calcularProducao, sortearRaridade, xpNecessario } from '../math';
 
@@ -48,8 +48,10 @@ export function criarEstadoInicial(
       atividadeAtualId: null,
     },
     atividades: criarAtividadesIniciais(),
-    recursos: { ouro: 0, xp: 0, itens: 0, limiteItens: LIMITE_ITENS },
+    recursos: { ouro: 0, xp: 0, itens: 0 },
     eventos: [],
+    contadoresDrops: criarContadoresDrops(),
+    segundosParaProximoDrop: 0,
   };
 }
 
@@ -91,28 +93,60 @@ export function avancarTempo(
   sortear: () => number,
 ): ResultadoTick {
   const estado = structuredClone(original);
+  normalizarEstadoDrops(estado);
   const novosEventos: Evento[] = [];
   const ativa = estado.atividades.find((a) => a.ativa);
   if (!ativa || segundos <= 0) return { estado, novosEventos };
 
   for (let i = 1; i <= segundos; i++) {
     const momento = original.ultimoTick + i * 1000;
+    if (ativa.id === ID_ATIVIDADE_EXPLORAR) {
+      processarSegundoExploracao(estado, momento, sortear, novosEventos);
+      continue;
+    }
 
-    // 1) Produção do segundo (função pura)
     const producao = calcularProducao(ativa.taxaPorSegundo, 1);
     aplicarProducao(estado, ativa.recurso, producao);
-
-    // 2) Subida de nível (indução)
-    if (ativa.recurso === TipoRecurso.XP) {
-      processarNivel(estado, momento, novosEventos);
-    }
-
-    // 3) Evento de probabilidade ao explorar
-    if (ativa.id === ID_ATIVIDADE_EXPLORAR) {
-      sortearEventoExplorar(estado, momento, sortear, novosEventos);
-    }
+    if (ativa.recurso === TipoRecurso.XP) processarNivel(estado, momento, novosEventos);
   }
+
   return { estado, novosEventos };
+}
+
+function processarSegundoExploracao(estado: EstadoJogo, momento: number, sortear: () => number, novosEventos: Evento[]): void {
+  estado.segundosParaProximoDrop += 1;
+  if (estado.segundosParaProximoDrop < SEGUNDOS_POR_DROP) return;
+
+  estado.segundosParaProximoDrop = 0;
+  const raridade = sortearRaridade(sortear());
+  const categoria = raridade === Raridade.COMUM ? 'comum'
+    : raridade === Raridade.RARO ? 'raro'
+      : raridade === Raridade.LENDARIO ? 'lendario' : null;
+  if (!categoria) return;
+  estado.recursos.itens += 1;
+  estado.contadoresDrops[categoria] += 1;
+  const rotulo = categoria === 'lendario' ? 'lend\u00e1rio' : categoria;
+  registrarEvento(estado, `Voc\u00ea dropou um item ${rotulo}`, TipoEvento.DROP, momento, novosEventos);
+}
+
+function criarContadoresDrops(): ContadoresDrops {
+  return { comum: 0, raro: 0, lendario: 0 };
+}
+
+export function normalizarEstadoDrops(estado: EstadoJogo): void {
+  const legado = estado as EstadoJogo & Partial<Pick<EstadoJogo, 'contadoresDrops' | 'segundosParaProximoDrop'>> & {
+    recursos: EstadoJogo['recursos'] & { limiteItens?: number };
+  };
+  estado.contadoresDrops ??= criarContadoresDrops();
+  estado.contadoresDrops.comum ??= 0;
+  estado.contadoresDrops.raro ??= 0;
+  estado.contadoresDrops.lendario ??= 0;
+  estado.segundosParaProximoDrop = Math.max(0, Math.min(SEGUNDOS_POR_DROP - 1, legado.segundosParaProximoDrop ?? 0));
+  delete legado.recursos.limiteItens;
+  const legacyState = estado as unknown as Record<string, unknown>;
+  delete legacyState.dropsPendentesCronica;
+  delete legacyState.segundosDesdeResumoDrops;
+  delete legacyState.idResumoDropsAtivo;
 }
 
 function aplicarProducao(estado: EstadoJogo, recurso: TipoRecurso, quantidade: number): void {
@@ -126,7 +160,7 @@ function aplicarProducao(estado: EstadoJogo, recurso: TipoRecurso, quantidade: n
       estado.personagem.xpAtual += quantidade;
       break;
     case TipoRecurso.ITEM:
-      r.itens = Math.min(r.limiteItens, r.itens + quantidade);
+      r.itens += quantidade;
       break;
   }
 }
@@ -147,24 +181,5 @@ function processarNivel(estado: EstadoJogo, momento: number, novos: Evento[]): v
         registrarEvento(estado, `Atividade "${a.nome}" desbloqueada`, TipoEvento.INFORMATIVO, momento, novos);
       }
     }
-  }
-}
-
-function sortearEventoExplorar(
-  estado: EstadoJogo,
-  momento: number,
-  sortear: () => number,
-  novos: Evento[],
-): void {
-  const raridade = sortearRaridade(sortear());
-  if (raridade === Raridade.COMUM) return; // nada relevante aconteceu
-
-  const r = estado.recursos;
-  r.itens = Math.min(r.limiteItens, r.itens + (BONUS_ITENS[raridade] ?? 0));
-
-  if (raridade === Raridade.LENDARIO) {
-    registrarEvento(estado, 'Encontrou item lendário!', TipoEvento.LENDARIO, momento, novos);
-  } else {
-    registrarEvento(estado, 'Encontrou item raro', TipoEvento.RARO, momento, novos);
   }
 }

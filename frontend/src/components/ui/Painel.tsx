@@ -9,22 +9,18 @@ interface Props {
   className?: string;
 }
 
-/** Card base do sistema: painel com borda fina, cantos suaves, sem sombra/gradiente decorativos. */
 export function Painel({ titulo, icone, acento = 'var(--color-gold)', acao, children, className = '' }: Props) {
   return (
-    <section className={`rounded-2xl border border-border bg-panel p-5 ${className}`}>
+    <section className={`rpg-panel rounded-2xl border border-border bg-panel p-4 sm:p-5 ${className}`}>
       {titulo && (
-        <header className="mb-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+        <header className="mb-4 flex items-center justify-between gap-3 border-b border-border/60 pb-3">
+          <div className="flex min-w-0 items-center gap-2.5">
             {icone && (
-              <span
-                className="flex h-7 w-7 items-center justify-center rounded-full"
-                style={{ color: acento, backgroundColor: 'color-mix(in srgb, ' + acento + ' 16%, transparent)' }}
-              >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-panel-raised" style={{ color: acento }}>
                 {icone}
               </span>
             )}
-            <h2 className="font-display text-lg font-semibold text-text">{titulo}</h2>
+            <h2 className="rpg-section-title truncate text-base font-bold text-text sm:text-lg">{titulo}</h2>
           </div>
           {acao}
         </header>

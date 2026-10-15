@@ -32,7 +32,7 @@ export function DiscoNivel({ nivel, xpAtual, xpProximoNivel }: Props) {
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="font-display text-4xl font-semibold leading-none text-text">{nivel}</span>
+        <span className="font-sans text-4xl font-semibold leading-none text-text">{nivel}</span>
         <span className="mt-1 text-[0.65rem] tracking-wide text-muted">nível</span>
       </div>
     </div>

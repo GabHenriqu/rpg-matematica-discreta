@@ -31,6 +31,13 @@ export enum TipoEvento {
   INFORMATIVO = 'informativo',
   RARO = 'raro',
   LENDARIO = 'lendario',
+  DROP = 'drop',
+}
+
+export interface ContadoresDrops {
+  comum: number;
+  raro: number;
+  lendario: number;
 }
 
 export interface Equipamento {
@@ -79,7 +86,6 @@ export interface Recursos {
   /** XP acumulado (total) */
   xp: number;
   itens: number;
-  limiteItens: number;
 }
 
 export interface Evento {
@@ -100,6 +106,10 @@ export interface EstadoJogo {
   recursos: Recursos;
   /** Mais recente primeiro; no máximo 5 */
   eventos: Evento[];
+  /** Drops encontrados por raridade (migrado automaticamente em saves antigos). */
+  contadoresDrops: ContadoresDrops;
+  /** Segundos ativos acumulados até o próximo drop; faixa 0..4. */
+  segundosParaProximoDrop: number;
 }
 
 export interface ResultadoTick {
@@ -111,6 +121,7 @@ export interface SecaoCentralMatematica {
   id: 'funcoes' | 'inducao' | 'conjuntos' | 'relacoes' | 'combinatoria' | 'probabilidade';
   titulo: string;
   formula: string;
+  explicacao: string;
   entrada: Record<string, unknown>;
   resultado: unknown;
 }

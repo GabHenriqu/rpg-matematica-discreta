@@ -1,82 +1,129 @@
 @import "tailwindcss";
 
-/*
-  Sistema de design do RPG Idle — ficha de personagem/manuscrito, não o
-  "SaaS card kit" genérico. Paleta escura tipo tinta, um acento dourado
-  para nível/ouro e uma cor por tipo de recurso.
-*/
 @theme {
-  --color-ink: #14131f;
-  --color-ink-deep: #0d0c15;
-  --color-panel: #1c1b2a;
-  --color-panel-raised: #242335;
-  --color-border: #38364f;
-  --color-text: #ede9f5;
-  --color-muted: #9793ae;
-  --color-gold: #d9a94d;
-  --color-gold-soft: #f0d189;
-  --color-violet: #9184dd;
-  --color-teal: #4fb8aa;
-  --color-crimson: #d6614f;
-
-  --font-display: "Fraunces", "Iowan Old Style", serif;
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --color-ink: #0B0E15;
+  --color-ink-deep: #080a10;
+  --color-panel: #151824;
+  --color-panel-raised: #1c2030;
+  --color-border: #383c50;
+  --color-text: #F2EBDD;
+  --color-muted: #a6a9bd;
+  --color-gold: #D9AD60;
+  --color-gold-soft: #f4c76a;
+  --color-violet: #AF6AFA;
+  --color-teal: #42C79A;
+  --color-success: #42C79A;
+  --color-archer: #4FAAF0;
+  --color-crimson: #ED5B60;
+  --font-display: "Cinzel", "Book Antiqua", Georgia, serif;
+  --font-sans: "Inter", "Segoe UI", Arial, sans-serif;
 }
 
-html,
-body,
-#root {
-  height: 100%;
-}
+html, body, #root { min-height: 100%; }
+body { margin: 0; background: var(--color-ink); color: var(--color-text); font-family: var(--font-sans); }
+::selection { background: var(--color-gold); color: var(--color-ink-deep); }
+:focus-visible { outline: 2px solid var(--color-gold-soft); outline-offset: 3px; }
 
-body {
+.rpg-screen {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
   background-color: var(--color-ink);
-  color: var(--color-text);
-  font-family: var(--font-sans);
+  background-image: radial-gradient(ellipse at 50% -15%, #20212b 0, transparent 56%), linear-gradient(180deg, #0b0e15 0%, #0b0e15 72%, #0b0e15 100%);
 }
+.rpg-screen::before { content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none; background: url('/rpg-idle/elementos/background-chalk.png') center / cover no-repeat; opacity: .5; filter: brightness(1.2) contrast(1.35); -webkit-mask-image: radial-gradient(ellipse at center, transparent 0%, #0002 38%, #000 88%); mask-image: radial-gradient(ellipse at center, transparent 0%, #0002 38%, #000 88%); }
+@media (max-width: 640px) { .rpg-screen::before { background-size: 100% 100%; opacity: .34; } }
+.rpg-title, .rpg-section-title { font-family: var(--font-display); letter-spacing: .035em; }
+.rpg-title-lockup { display: flex; align-items: center; justify-content: center; gap: .65rem; }
+.rpg-title-lockup--compact { justify-content: flex-start; gap: .45rem; }
+.rpg-title-crown { width: 2rem; height: 1.6rem; flex: none; fill: none; stroke: var(--color-gold); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 7px #d9ad6044); }
+.rpg-title-lockup--compact .rpg-title-crown { width: 1.35rem; height: 1.1rem; }
+.rpg-title-divider { position: relative; width: min(15rem, 75%); height: 1px; margin: .9rem auto 0; background: linear-gradient(90deg, transparent, #d9ad6088, transparent); }
+.rpg-title-divider::after { content: ""; position: absolute; width: 6px; height: 6px; left: 50%; top: 50%; border: 1px solid var(--color-gold); background: var(--color-ink); transform: translate(-50%, -50%) rotate(45deg); }
+.rpg-title-divider--compact { width: 8rem; margin: .5rem 0 0 1.8rem; }
 
-::selection {
-  background-color: var(--color-gold);
-  color: var(--color-ink-deep);
+.rpg-create-title-crown { width: 2.4rem; height: 2rem; margin-inline: auto; stroke: var(--color-text); filter: drop-shadow(0 0 8px #f2ebdd33); }
+.rpg-create-title-lockup { gap: clamp(.5rem, 2vw, 1.25rem); }
+.rpg-title-flourish { position: relative; flex: 1 1 1.5rem; width: min(7rem, 12vw); max-width: 7rem; height: 1px; }
+.rpg-title-flourish--left { background: linear-gradient(90deg, transparent, #f2ebddcc); }
+.rpg-title-flourish--right { background: linear-gradient(90deg, #f2ebddcc, transparent); }
+.rpg-title-flourish::after { content: ""; position: absolute; top: 50%; width: 5px; height: 5px; border: 1px solid var(--color-text); transform: translateY(-50%) rotate(45deg); }
+.rpg-title-flourish--left::after { right: 0; }
+.rpg-title-flourish--right::after { left: 0; }
+.rpg-class-card { --class-accent: var(--color-gold); isolation: isolate; border-color: transparent; background-image: linear-gradient(145deg, #151824e8, #10131df2); box-shadow: inset 0 0 0 1px #f2ebdd06; transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease; }
+.rpg-class-card[data-class="guerreiro"] { --class-accent: var(--color-crimson); }
+.rpg-class-card[data-class="mago"] { --class-accent: var(--color-violet); }
+.rpg-class-card[data-class="arqueiro"] { --class-accent: var(--color-archer); }
+.rpg-class-card::before { content: ""; position: absolute; z-index: 0; pointer-events: none; inset: 2px; overflow: hidden; background: var(--class-accent); -webkit-mask: url("/rpg-idle/elementos/moldura-chalk.svg") center / 100% 100% no-repeat; mask: url("/rpg-idle/elementos/moldura-chalk.svg") center / 100% 100% no-repeat; opacity: .9; transition: opacity 180ms ease; }
+.rpg-class-card::after { content: ""; position: absolute; z-index: 0; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle at 18% 22%, var(--class-accent) 0 1px, transparent 2px), radial-gradient(circle at 82% 27%, var(--class-accent) 0 1px, transparent 2px), radial-gradient(circle at 25% 76%, var(--class-accent) 0 1px, transparent 2px), radial-gradient(circle at 76% 72%, var(--class-accent) 0 1px, transparent 2px); transition: opacity 180ms ease; }
+.rpg-class-emblem { display: grid; width: 2rem; height: 2rem; place-items: center; border: 1px solid color-mix(in srgb, currentColor 45%, transparent); border-radius: 50%; background: #0b0e15bb; box-shadow: 0 0 16px color-mix(in srgb, currentColor 22%, transparent); }
+.rpg-sketch-field { border: 1px solid #d9ad6080; border-radius: 10px 8px 12px 7px; box-shadow: inset 0 0 0 1px #f2ebdd05, 2px 2px 0 #d9ad6012; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.rpg-sketch-field:focus { border-color: var(--color-gold); box-shadow: 0 0 0 3px #d9ad6022, 2px 2px 0 #d9ad6022; }
+.rpg-sketch-button { border-radius: 8px 11px 7px 10px !important; box-shadow: 0 3px 0 #8d6a34, inset 0 1px #fff4; }
+.rpg-sketch-button:not(:disabled):hover { box-shadow: 0 5px 0 #8d6a34, 0 0 18px #d9ad6030; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .rpg-sketch-button:not(:disabled):hover { transform: translateY(-2px); }
+  .rpg-class-card:hover { transform: translateY(-3px); border-color: transparent; box-shadow: inset 0 0 22px color-mix(in srgb, var(--class-accent) 8%, transparent); }
+  .rpg-class-card:hover::after, .rpg-class-card[aria-pressed="true"]::after { opacity: .36; animation: rpg-class-sparks 2.8s ease-in-out infinite alternate; }
 }
+.rpg-class-card[aria-pressed="true"] { border-color: transparent; box-shadow: inset 0 0 20px color-mix(in srgb, var(--class-accent) 10%, transparent); }
+.rpg-class-card:hover::before { opacity: 1; }
+.rpg-class-card[aria-pressed="true"]::before { opacity: 1; }
+.rpg-hero-frame { --class-accent: var(--color-gold); isolation: isolate; border-color: transparent; }
+.rpg-hero-frame[data-class="guerreiro"] { --class-accent: var(--color-crimson); }
+.rpg-hero-frame[data-class="mago"] { --class-accent: var(--color-violet); }
+.rpg-hero-frame[data-class="arqueiro"] { --class-accent: var(--color-archer); }
+.rpg-hero-frame::before { content: ""; position: absolute; z-index: 1; pointer-events: none; inset: 2px; overflow: hidden; background: var(--class-accent); -webkit-mask: url("/rpg-idle/elementos/moldura-chalk.svg") center / 100% 100% no-repeat; mask: url("/rpg-idle/elementos/moldura-chalk.svg") center / 100% 100% no-repeat; opacity: .9; }
+@keyframes rpg-class-sparks { from { opacity: .2; } to { opacity: .48; } }
+.rpg-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: #68563c !important;
+  background: linear-gradient(145deg, #171a27f2, #11131ff2) !important;
+  box-shadow: 0 16px 38px #0005;
+}
+.rpg-panel::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(var(--color-gold) 0 0) left 12px top 0 / 34px 1px no-repeat,
+    linear-gradient(var(--color-gold) 0 0) right 12px top 0 / 34px 1px no-repeat,
+    linear-gradient(var(--color-gold) 0 0) left 12px bottom 0 / 34px 1px no-repeat,
+    linear-gradient(var(--color-gold) 0 0) right 12px bottom 0 / 34px 1px no-repeat;
+  opacity: .7;
+}
+.rpg-panel > * { position: relative; z-index: 1; }
+.rpg-button-primary { box-shadow: inset 0 1px #fff5, 0 4px 14px #d9ad6030; }
+.rpg-screen button:not(:disabled) { transition: transform 160ms ease, filter 160ms ease, background-color 160ms ease; }
+.rpg-screen button:not(:disabled):hover { filter: brightness(1.08); }
+.rpg-screen button:disabled { cursor: not-allowed; }
+.rpg-hero-art {
+  display: block;
+  object-fit: contain;
+  object-position: center;
+  image-rendering: auto;
+  filter: none;
+  opacity: 1;
+}
+.rpg-math-dialog { border: 1px solid #796342; background: #0d1019; box-shadow: 0 24px 90px #000c; }
+.rpg-math-backdrop { background: #05060bc9; backdrop-filter: blur(8px); }
+.cronica::-webkit-scrollbar { width: 6px; }
+.cronica::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 999px; }
+.cronica::-webkit-scrollbar-track { background: transparent; }
+details.formula > summary { list-style: none; cursor: pointer; }
+details.formula > summary::-webkit-details-marker { display: none; }
+details.formula > summary .chevron { transition: transform 180ms ease; }
+details.formula[open] > summary .chevron { transform: rotate(90deg); }
 
-:focus-visible {
-  outline: 2px solid var(--color-gold-soft);
-  outline-offset: 2px;
+@media (max-width: 640px) {
+  .rpg-panel { border-radius: 1rem; }
+  .rpg-math-dialog { inset: .5rem !important; max-height: calc(100dvh - 1rem); }
 }
-
-/* Diário de eventos: barra de rolagem fina, discreta */
-.cronica::-webkit-scrollbar {
-  width: 6px;
-}
-.cronica::-webkit-scrollbar-thumb {
-  background-color: var(--color-border);
-  border-radius: 999px;
-}
-.cronica::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* Seções da Central Matemática (accordion nativo em <details>) */
-details.formula > summary {
-  list-style: none;
-  cursor: pointer;
-}
-details.formula > summary::-webkit-details-marker {
-  display: none;
-}
-details.formula > summary .chevron {
-  transition: transform 200ms ease;
-}
-details.formula[open] > summary .chevron {
-  transform: rotate(90deg);
-}
-
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    transition-duration: 0.001ms !important;
-  }
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }

@@ -73,7 +73,7 @@ export function criarAtividadesIniciais(): Atividade[] {
   const base: Omit<Atividade, 'ativa' | 'desbloqueada'>[] = [
     { id: 'cacar', nome: 'Caçar', recurso: TipoRecurso.OURO, taxaPorSegundo: 3, nivelDesbloqueio: 1 },
     { id: 'treinar', nome: 'Treinar', recurso: TipoRecurso.XP, taxaPorSegundo: 5, nivelDesbloqueio: 1 },
-    { id: 'explorar', nome: 'Explorar', recurso: TipoRecurso.ITEM, taxaPorSegundo: 1, nivelDesbloqueio: 2 },
+    { id: 'explorar', nome: 'Explorar', recurso: TipoRecurso.ITEM, taxaPorSegundo: 0.2, nivelDesbloqueio: 2 },
   ];
   return base.map((a) => ({ ...a, ativa: false, desbloqueada: a.nivelDesbloqueio <= 1 }));
 }

@@ -11,7 +11,13 @@ export type TipoEquipamento = 'arma' | 'armadura';
 
 export type TipoRecurso = 'ouro' | 'xp' | 'item';
 
-export type TipoEvento = 'informativo' | 'raro' | 'lendario';
+export type TipoEvento = 'informativo' | 'raro' | 'lendario' | 'drop';
+
+export interface ContadoresDrops {
+  comum: number;
+  raro: number;
+  lendario: number;
+}
 
 export interface Equipamento {
   id: string;
@@ -50,7 +56,6 @@ export interface Recursos {
   ouro: number;
   xp: number;
   itens: number;
-  limiteItens: number;
 }
 
 export interface Evento {
@@ -68,6 +73,8 @@ export interface EstadoJogo {
   atividades: Atividade[];
   recursos: Recursos;
   eventos: Evento[];
+  contadoresDrops: ContadoresDrops;
+  segundosParaProximoDrop: number;
 }
 
 export interface RespostaTick {
@@ -80,6 +87,7 @@ export interface SecaoCentralMatematica {
   id: 'funcoes' | 'inducao' | 'conjuntos' | 'relacoes' | 'combinatoria' | 'probabilidade';
   titulo: string;
   formula: string;
+  explicacao: string;
   entrada: Record<string, unknown>;
   resultado: unknown;
 }
